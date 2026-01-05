@@ -1,11 +1,21 @@
+A CHIP-8 emulator written in Java and rendered with Swing, with no external runtime dependencies.
+This implementation is based on
+[Cowgod’s CHIP-8 Technical Reference](http://devernay.free.fr/hacks/chip8/C8TECH10.HTM) and
+validated using [Timendus’s CHIP-8 test suite](https://github.com/Timendus/chip8-test-suite/).
+All CHIP-8 instructions are fully implemented, and the emulator currently passes all tests in
+the test suite. Sound support is implemented using the CHIP-8 sound timer and real-time audio
+generation. The emulator boots into a custom splash screen and provides a settings screen for
+configuring execution timing and display colors, as well as loading ROMs at runtime via the
+**Escape** key.
 
-A CHIP-8 emulator written in Java and rendered with Swing. This implementation is based on [Cowgod’s CHIP-8 Technical Reference](http://devernay.free.fr/hacks/chip8/C8TECH10.HTM) and validated using [Timendus’s CHIP-8 test suite](https://github.com/Timendus/chip8-test-suite/).  All tests are currently passing, but not all quirks are implemented.  The emulator boots into a custom splash screen and allows new ROMs to be loaded at runtime via the **Escape** key.
+![Splash screen](data/images/splash.png)
 
 Debugging
 ---------
 
-Debugging and visibility still needs improvement.  Currently all logging is system print statements.  The current machine state can be retrieved as a string using the MachineState class's `currentState()` method
-
+Debugging and visibility still needs improvement. Currently all logging is system print statements.
+The current machine state can be retrieved as a string using the MachineState class's
+`currentState()` method
 
 ```
 ─────── Instruction Window  ───────
@@ -56,11 +66,13 @@ Building And Running
 --------------------
 
 Building with maven
+
 ```
 mvn clean package
 ```
 
 Running with maven
+
 ```
 mvn exec:java -Dexec.mainClass="pantoja.chip8.Main"
 ```
@@ -68,16 +80,19 @@ mvn exec:java -Dexec.mainClass="pantoja.chip8.Main"
 ROMs
 ----
 
-The testing ROMs located at `data/roms/chip8-test-suite` are from [Timendus's test suite](https://github.com/Timendus/chip8-test-suite/).
-
-The splash ROM was authored by me and distributed under the project license
+- A custom splash screen authored for this project is displayed on startup and serves as the default ROM when the emulator launches.
+- Test ROMs from [Timendus’s CHIP-8 Test Suite](https://github.com/Timendus/chip8-test-suite/) are included for validation and are licensed under the GNU General Public License v3 (GPLv3).
 
 Upcoming Changes / TODOs
 ------------------------
 
-* Instead using a separate scheduled executor, a single thread that runs the emulator and the swing display will run on the EDT
-* Create a "BUS" abstraction for memory access
-* Make all CHIP-8 "quirks" configurable
-* Some of the current settings, like display width and height, should not be configurable
-* Some settings should be persistent, like foreground and background color
-* Super and XO Chip functionality
+- Introduce a Bus abstraction to centralize memory, register, stack, and device access
+- Refactor execution to use a single emulator thread with cycle-based timing, keeping all UI updates on the EDT
+- Make all CHIP-8 quirks configurable (shift behavior, VF semantics, I register side effects, draw wrapping)
+- Separate hardware constants (resolution, register count, stack depth) from user-configurable settings
+- Persist user settings such as foreground/background colors
+- Improve emulator lifecycle management (start, stop, reset, clean reload of ROMs and settings)
+- Add Super-CHIP (SCHIP) support, including high-resolution mode and extended instructions
+- Add XO-CHIP support with expanded memory, memory-mapped devices, and extended audio/display features
+- Implement optional debugging tools (instruction stepping, register/memory inspection, breakpoints)
+
