@@ -97,7 +97,7 @@ public final class Emulator implements AutoCloseable, Runnable {
             }
 
             long parkNs = Math.min(Config.get().cpuPeriodNs - cpuAcc, Config.get().timerPeriodNs - timerAcc);
-            if (parkNs > 750_000L) { // 500 microseconds
+            if (parkNs > 50_000L) { // 50 microseconds
                 LockSupport.parkNanos(parkNs);
             } else {
                 Thread.onSpinWait();
