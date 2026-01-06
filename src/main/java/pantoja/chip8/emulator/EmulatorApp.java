@@ -4,13 +4,13 @@ import pantoja.chip8.ux.Keypad;
 import pantoja.chip8.ux.Window;
 
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
 
 public class EmulatorApp {
 
     private final Keypad keypad;
     private final Window window;
     private final Emulator emulator;
+    private Thread emuThread;
 
 
     public EmulatorApp() throws IOException {
@@ -21,30 +21,24 @@ public class EmulatorApp {
 
 
     public void start() {
-        try {
-            emulator.loadFromConfig();
-            window.show();
-            emulator.start();
-        } catch (InterruptedException | InvocationTargetException | IOException ioe) {
-            System.out.println("Failed to start emulator");
-            throw new RuntimeException(ioe);
-        }
+        window.show();
+        emuThread = new Thread(emulator);
+        emuThread.start();
     }
 
 
     public void reload() {
-        try {
-            emulator.loadFromConfig();
-            emulator.start();
-        } catch (InterruptedException | InvocationTargetException | IOException ioe) {
-            System.out.println("Failed to reload emulator from config");
-            throw new RuntimeException(ioe);
-        }
+        emulator.reload();
     }
 
 
     public void shutdown() {
         emulator.close();
+        try {
+            emuThread.join(500L);
+        } catch (InterruptedException e) {
+            emuThread.interrupt();
+        }
         window.dispose();
     }
 

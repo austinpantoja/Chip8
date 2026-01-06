@@ -2,12 +2,12 @@ package pantoja.chip8;
 
 import pantoja.chip8.emulator.EmulatorApp;
 
-import javax.swing.SwingUtilities;
+import java.awt.EventQueue;
 
 public class Main {
 
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> {
+        EventQueue.invokeLater(() -> {
             try {
                 EmulatorApp app = new EmulatorApp();
                 app.start();

@@ -7,102 +7,101 @@ import pantoja.chip8.ux.Keypad;
 import pantoja.chip8.ux.Sound;
 import pantoja.chip8.ux.Window;
 
+import java.awt.EventQueue;
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.LockSupport;
 
-public final class Emulator implements AutoCloseable {
+public final class Emulator implements AutoCloseable, Runnable {
     private final Window window;
     private final Keypad keypad;
-    private final ScheduledExecutorService exec;
 
-    private ScheduledFuture<?> cpuTask;
-    private ScheduledFuture<?> timerTask;
     private Sound sound;
     private MachineState machineState;
-    private Chip8Executor executorImpl;
     private Decoder decoder;
+    private final AtomicBoolean running;
+    private final AtomicBoolean reloadRequested;
 
 
-    public Emulator(Window window, Keypad keypad) throws IOException {
+    public Emulator(Window window, Keypad keypad) {
         this.window = window;
         this.keypad = keypad;
-        this.exec = Executors.newScheduledThreadPool(2);
+        this.running = new AtomicBoolean(false);
+        this.reloadRequested = new AtomicBoolean(false);
     }
 
 
-    public synchronized void loadFromConfig()
-            throws IOException, InterruptedException, InvocationTargetException {
-        stop();
-
-        Config.Configuration cfg = Config.get();
-        window.setupDisplay();
-        sound = new Sound(cfg.soundFreq, cfg.soundAmplitude);
-        machineState = new MachineState(cfg.romPath, sound);
-        decoder = new Decoder(new Chip8Executor(machineState, window, keypad));
-    }
-
-
-    public synchronized void start() {
-        if (machineState == null || decoder == null) {
-            throw new IllegalStateException("Emulator not loaded. Call loadFromConfig() first.");
+    private synchronized void loadFromConfig() {
+        try {
+            Config.Configuration cfg = Config.get();
+            window.setupDisplay();
+            sound = new Sound(cfg.soundFreq, cfg.soundAmplitude);
+            machineState = new MachineState(cfg.romPath, sound);
+            decoder = new Decoder(new Chip8Executor(machineState, window, keypad));
+        } catch (IOException e) {
+            System.out.println("Failed to load ROM config!");
+            throw new RuntimeException(e);
         }
-
-        stopSchedules();
-
-        cpuTask = exec.scheduleAtFixedRate(
-                () -> {
-                    int instruction = machineState.fetchInstruction();
-                    decoder.decode(instruction);
-                },
-                0,
-                Config.get().cpuPeriodNs,
-                TimeUnit.NANOSECONDS
-        );
-
-        timerTask = exec.scheduleAtFixedRate(
-                () -> {
-                    window.display.repaint();
-                    machineState.updateTimers();
-                    sound.audioLoop();
-                },
-                0,
-                Config.get().timerPeriodNs,
-                TimeUnit.NANOSECONDS
-        );
     }
 
 
-    public synchronized void stop() {
-        stopSchedules();
-        // TODO update Sound to be stoppable
-    }
-
-
-    public synchronized void stopSchedules() {
-        if (cpuTask != null) {
-            cpuTask.cancel(true);
-        }
-        if (timerTask != null) {
-            timerTask.cancel(true);
-        }
+    public synchronized void reload() {
+        reloadRequested.set(true);
     }
 
 
     @Override
     public void close() {
-        stop();
-        try {
-            exec.shutdownNow();
-            boolean terminated = exec.awaitTermination(1000, TimeUnit.MILLISECONDS);
-            if (!terminated) {
-                Thread.currentThread().interrupt();
+        running.set(false);
+    }
+
+
+    @Override
+    public void run() {
+        loadFromConfig();
+        running.set(true);
+        long last = System.nanoTime();
+        long timerAcc = 0L;
+        long cpuAcc = 0L;
+
+        while (running.get()) {
+            long now = System.nanoTime();
+            long dt = now - last;
+            last = now;
+
+            cpuAcc += dt;
+            timerAcc += dt;
+
+            if (reloadRequested.get()) {
+                reloadRequested.set(false);
+                loadFromConfig();
+                cpuAcc = 0L;
+                timerAcc = 0L;
+                now = System.nanoTime();
+                last = now;
+
             }
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
+            // CPU stepping
+            if (cpuAcc >= Config.get().cpuPeriodNs) {
+                int instruction = machineState.fetchInstruction();
+                decoder.decode(instruction);
+                cpuAcc -= Config.get().cpuPeriodNs;
+            }
+
+            // Timers / sound / display stepping
+            if (timerAcc >= Config.get().timerPeriodNs) {
+                machineState.updateTimers();
+                sound.audioLoop();
+                EventQueue.invokeLater(() -> window.display.repaint());
+                timerAcc -= Config.get().timerPeriodNs;
+            }
+
+            long parkNs = Math.min(Config.get().cpuPeriodNs - cpuAcc, Config.get().timerPeriodNs - timerAcc);
+            if (parkNs > 750_000L) { // 500 microseconds
+                LockSupport.parkNanos(parkNs);
+            } else {
+                Thread.onSpinWait();
+            }
         }
     }
 }

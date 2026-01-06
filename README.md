@@ -80,19 +80,23 @@ mvn exec:java -Dexec.mainClass="pantoja.chip8.Main"
 ROMs
 ----
 
-- A custom splash screen authored for this project is displayed on startup and serves as the default ROM when the emulator launches.
-- Test ROMs from [Timendus’s CHIP-8 Test Suite](https://github.com/Timendus/chip8-test-suite/) are included for validation and are licensed under the GNU General Public License v3 (GPLv3).
+- A custom splash screen authored for this project is displayed on startup and serves as the default
+  ROM when the emulator launches.
+- Test ROMs from [Timendus’s CHIP-8 Test Suite](https://github.com/Timendus/chip8-test-suite/) are
+  included for validation and are licensed under the GNU General Public License v3 (GPLv3).
 
 Upcoming Changes / TODOs
 ------------------------
 
 - Introduce a Bus abstraction to centralize memory, register, stack, and device access
-- Refactor execution to use a single emulator thread with cycle-based timing, keeping all UI updates on the EDT
-- Make all CHIP-8 quirks configurable (shift behavior, VF semantics, I register side effects, draw wrapping)
-- Separate hardware constants (resolution, register count, stack depth) from user-configurable settings
+- Make all CHIP-8 quirks configurable (shift behavior, VF semantics, I register side effects, draw
+  wrapping)
+- Separate hardware constants (resolution, register count, stack depth) from user-configurable
+  settings
 - Persist user settings such as foreground/background colors
 - Improve emulator lifecycle management (start, stop, reset, clean reload of ROMs and settings)
 - Add Super-CHIP (SCHIP) support, including high-resolution mode and extended instructions
-- Add XO-CHIP support with expanded memory, memory-mapped devices, and extended audio/display features
+- Add XO-CHIP support with expanded memory, memory-mapped devices, and extended audio/display
+  features
 - Implement optional debugging tools (instruction stepping, register/memory inspection, breakpoints)
 
