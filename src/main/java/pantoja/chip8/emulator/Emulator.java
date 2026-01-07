@@ -2,12 +2,16 @@ package pantoja.chip8.emulator;
 
 import pantoja.chip8.instructions.Chip8Executor;
 import pantoja.chip8.instructions.Decoder;
+import pantoja.chip8.memory.Chip8Bus;
+import pantoja.chip8.memory.Chip8Ram;
+import pantoja.chip8.memory.CpuState;
+import pantoja.chip8.memory.IBus;
+import pantoja.chip8.memory.IRam;
 import pantoja.chip8.util.Config;
 import pantoja.chip8.ux.Keypad;
 import pantoja.chip8.ux.Sound;
 import pantoja.chip8.ux.Window;
 
-import java.awt.EventQueue;
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.LockSupport;
@@ -15,9 +19,11 @@ import java.util.concurrent.locks.LockSupport;
 public final class Emulator implements AutoCloseable, Runnable {
     private final Window window;
     private final Keypad keypad;
+    private final IBus bus;
+    private final IRam ram;
 
     private Sound sound;
-    private MachineState machineState;
+    private CpuState cpuState;
     private Decoder decoder;
     private final AtomicBoolean running;
     private final AtomicBoolean reloadRequested;
@@ -28,6 +34,8 @@ public final class Emulator implements AutoCloseable, Runnable {
         this.keypad = keypad;
         this.running = new AtomicBoolean(false);
         this.reloadRequested = new AtomicBoolean(false);
+        this.ram = new Chip8Ram();
+        this.bus = new Chip8Bus(ram);
     }
 
 
@@ -36,8 +44,9 @@ public final class Emulator implements AutoCloseable, Runnable {
             Config.Configuration cfg = Config.get();
             window.setupDisplay();
             sound = new Sound(cfg.soundFreq, cfg.soundAmplitude);
-            machineState = new MachineState(cfg.romPath, sound);
-            decoder = new Decoder(new Chip8Executor(machineState, window, keypad));
+            ram.resetWithRom(cfg.romPath);
+            cpuState = new CpuState(cfg.romPath, sound, bus);
+            decoder = new Decoder(new Chip8Executor(cpuState, window, keypad, bus));
         } catch (IOException e) {
             System.out.println("Failed to load ROM config!");
             throw new RuntimeException(e);
@@ -83,16 +92,17 @@ public final class Emulator implements AutoCloseable, Runnable {
             }
             // CPU stepping
             if (cpuAcc >= Config.get().cpuPeriodNs) {
-                int instruction = machineState.fetchInstruction();
+                int instruction = cpuState.fetchInstruction();
                 decoder.decode(instruction);
+                System.out.println(cpuState.currentState());
                 cpuAcc -= Config.get().cpuPeriodNs;
             }
 
             // Timers / sound / display stepping
             if (timerAcc >= Config.get().timerPeriodNs) {
-                machineState.updateTimers();
+                cpuState.updateTimers();
                 sound.audioLoop();
-                EventQueue.invokeLater(() -> window.display.repaint());
+                window.display.repaint();
                 timerAcc -= Config.get().timerPeriodNs;
             }
 

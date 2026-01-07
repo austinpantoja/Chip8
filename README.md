@@ -88,7 +88,6 @@ ROMs
 Upcoming Changes / TODOs
 ------------------------
 
-- Introduce a Bus abstraction to centralize memory, register, stack, and device access
 - Make all CHIP-8 quirks configurable (shift behavior, VF semantics, I register side effects, draw
   wrapping)
 - Separate hardware constants (resolution, register count, stack depth) from user-configurable
