@@ -45,9 +45,9 @@ public class Decoder {
                     case 0x3 -> executor.xor(vx, vy);
                     case 0x4 -> executor.add(vx, vy);
                     case 0x5 -> executor.sub(vx, vy);
-                    case 0x6 -> executor.shiftRight(vx);
+                    case 0x6 -> executor.shiftRight(vx, vy);
                     case 0x7 -> executor.subNotBorrow(vx, vy);
-                    case 0xE -> executor.shiftLeft(vx);
+                    case 0xE -> executor.shiftLeft(vx, vy);
                     default -> executor.nop();
                 }
             }

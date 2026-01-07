@@ -162,15 +162,15 @@ public class InstructionDisassembler implements IInstructionExecutor {
 
     // 8xy6 - SHR Vx {, Vy}
     @Override
-    public void shiftRight(int vx) {
-        assembly.add("SHR v" + vx);
+    public void shiftRight(int vx, int vy) {
+        assembly.add("SHR v" + vx + ", {v" + vy + "}");
     }
 
 
     // 8xyE - SHL Vx {, Vy}
     @Override
-    public void shiftLeft(int vx) {
-        assembly.add("SHL v" + vx);
+    public void shiftLeft(int vx, int vy) {
+        assembly.add("SHL v" + vx + ", {v" + vy + "}");
     }
 
 

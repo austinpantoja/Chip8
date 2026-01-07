@@ -160,11 +160,12 @@ public class Chip8Executor implements IInstructionExecutor {
     }
 
 
+    // TODO make quirk configurable
     @Override
-    public void shiftRight(int vx) {
-        int x = cpuState.readRegister(vx);
-        int carry = x % 2;
-        cpuState.writeRegister(vx, x >> 1);
+    public void shiftRight(int vx, int vy) {
+        int y = cpuState.readRegister(vy);
+        int carry = y % 2;
+        cpuState.writeRegister(vx, y >> 1);
         cpuState.writeRegister(0xF, carry);
     }
 
@@ -179,11 +180,12 @@ public class Chip8Executor implements IInstructionExecutor {
     }
 
 
+    //TODO make quirk configurable
     @Override
-    public void shiftLeft(int vx) {
-        int x = cpuState.readRegister(vx) << 1;
-        cpuState.writeRegister(vx, x & 0xFF);
-        cpuState.writeRegister(0xF, (x & 0x100) >> 8);
+    public void shiftLeft(int vx, int vy) {
+        int y = cpuState.readRegister(vy) << 1;
+        cpuState.writeRegister(vx, y & 0xFF);
+        cpuState.writeRegister(0xF, (y & 0x100) >> 8);
     }
 
 
