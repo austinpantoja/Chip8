@@ -59,7 +59,7 @@ public final class Emulator {
 
     public synchronized void start() {
         if (scheduledTick != null) {
-            scheduledTick.cancel(false);
+            scheduledTick.cancel(true);
         }
         loadFromConfig();
 
