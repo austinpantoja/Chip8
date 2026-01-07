@@ -10,35 +10,23 @@ public class EmulatorApp {
     private final Keypad keypad;
     private final Window window;
     private final Emulator emulator;
-    private Thread emuThread;
 
 
     public EmulatorApp() throws IOException {
         this.keypad = new Keypad();
-        this.window = new Window(keypad, this::reload);
+        this.window = new Window(keypad, this::start);
         this.emulator = new Emulator(window, keypad);
     }
 
 
     public void start() {
         window.show();
-        emuThread = new Thread(emulator);
-        emuThread.start();
-    }
-
-
-    public void reload() {
-        emulator.reload();
+        emulator.start();
     }
 
 
     public void shutdown() {
-        emulator.close();
-        try {
-            emuThread.join(500L);
-        } catch (InterruptedException e) {
-            emuThread.interrupt();
-        }
+        emulator.stop();
         window.dispose();
     }
 

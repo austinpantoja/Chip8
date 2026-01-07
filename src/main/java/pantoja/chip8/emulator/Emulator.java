@@ -12,11 +12,14 @@ import pantoja.chip8.ux.Keypad;
 import pantoja.chip8.ux.Sound;
 import pantoja.chip8.ux.Window;
 
+import java.awt.EventQueue;
 import java.io.IOException;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.locks.LockSupport;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 
-public final class Emulator implements AutoCloseable, Runnable {
+public final class Emulator {
     private final Window window;
     private final Keypad keypad;
     private final IBus bus;
@@ -25,17 +28,17 @@ public final class Emulator implements AutoCloseable, Runnable {
     private Sound sound;
     private CpuState cpuState;
     private Decoder decoder;
-    private final AtomicBoolean running;
-    private final AtomicBoolean reloadRequested;
+
+    ScheduledFuture<?> scheduledTick;
+    ScheduledExecutorService executor;
 
 
     public Emulator(Window window, Keypad keypad) {
         this.window = window;
         this.keypad = keypad;
-        this.running = new AtomicBoolean(false);
-        this.reloadRequested = new AtomicBoolean(false);
         this.ram = new Chip8Ram();
         this.bus = new Chip8Bus(ram);
+        this.executor = Executors.newScheduledThreadPool(1);
     }
 
 
@@ -54,64 +57,52 @@ public final class Emulator implements AutoCloseable, Runnable {
     }
 
 
-    public synchronized void reload() {
-        reloadRequested.set(true);
-    }
-
-
-    @Override
-    public void close() {
-        running.set(false);
-    }
-
-
-    @Override
-    public void run() {
+    public synchronized void start() {
+        if (scheduledTick != null) {
+            scheduledTick.cancel(false);
+        }
         loadFromConfig();
-        running.set(true);
-        long last = System.nanoTime();
-        long timerAcc = 0L;
-        long cpuAcc = 0L;
 
-        while (running.get()) {
-            long now = System.nanoTime();
-            long dt = now - last;
-            last = now;
+        // Used to measure the 60HZ timer updates
+        long[] timer = new long[]{
+                System.nanoTime(),  // last cpu tick time
+                0,                  // timer accumulator
+        };
 
-            cpuAcc += dt;
-            timerAcc += dt;
+        scheduledTick = executor.scheduleAtFixedRate(
+                () -> {
+                    int instruction = cpuState.fetchInstruction();
+                    decoder.decode(instruction);
+                    long now = System.nanoTime();
+                    timer[1] += (now - timer[0]);
+                    timer[0] = now;
+                    if (timer[1] > Config.get().timerPeriodNs) {
+                        cpuState.updateTimers();
+                        sound.audioLoop();
+                        EventQueue.invokeLater(() -> window.display.repaint());
+                        timer[1] -= Config.get().timerPeriodNs;
+                    }
+                },
+                0,
+                Config.get().cpuPeriodNs,
+                TimeUnit.NANOSECONDS
+        );
+    }
 
-            if (reloadRequested.get()) {
-                reloadRequested.set(false);
-                loadFromConfig();
-                cpuAcc = 0L;
-                timerAcc = 0L;
-                now = System.nanoTime();
-                last = now;
 
+    public void stop() {
+        // TODO stop sound
+        if (scheduledTick != null) {
+            scheduledTick.cancel(true);
+        }
+        try {
+            executor.shutdownNow();
+            boolean terminated = executor.awaitTermination(1000, TimeUnit.MILLISECONDS);
+            if (!terminated) {
+                Thread.currentThread().interrupt();
             }
-            // CPU stepping
-            if (cpuAcc >= Config.get().cpuPeriodNs) {
-                int instruction = cpuState.fetchInstruction();
-                decoder.decode(instruction);
-                System.out.println(cpuState.currentState());
-                cpuAcc -= Config.get().cpuPeriodNs;
-            }
-
-            // Timers / sound / display stepping
-            if (timerAcc >= Config.get().timerPeriodNs) {
-                cpuState.updateTimers();
-                sound.audioLoop();
-                window.display.repaint();
-                timerAcc -= Config.get().timerPeriodNs;
-            }
-
-            long parkNs = Math.min(Config.get().cpuPeriodNs - cpuAcc, Config.get().timerPeriodNs - timerAcc);
-            if (parkNs > 50_000L) { // 50 microseconds
-                LockSupport.parkNanos(parkNs);
-            } else {
-                Thread.onSpinWait();
-            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
         }
     }
 }
