@@ -90,6 +90,7 @@ Upcoming Changes / TODOs
 
 - Make all CHIP-8 quirks configurable (shift behavior, VF semantics, I register side effects, draw
   wrapping)
+- Implement a display abstraction that is separate from the swing components
 - Separate hardware constants (resolution, register count, stack depth) from user-configurable
   settings
 - Persist user settings such as foreground/background colors

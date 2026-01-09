@@ -2,6 +2,7 @@ package pantoja.chip8.instructions;
 
 import pantoja.chip8.memory.CpuState;
 import pantoja.chip8.memory.IBus;
+import pantoja.chip8.util.Config;
 import pantoja.chip8.ux.Keypad;
 import pantoja.chip8.ux.Window;
 
@@ -218,12 +219,15 @@ public class Chip8Executor implements IInstructionExecutor {
 
     @Override
     public void draw(int vx, int vy, int val) {
-        int x = cpuState.readRegister(vx);
-        int y = cpuState.readRegister(vy);
+        // Quirk - clipping should be configurable
+        int x = cpuState.readRegister(vx) % Config.get().width;
+        int y = cpuState.readRegister(vy) % Config.get().height;
         int[] sprite = bus.readRange(cpuState.I, val);
 
         boolean carry = window.setSprite(x, y, sprite);
         cpuState.writeRegister(0xF, (carry) ? 1 : 0);
+        // Quirk should be configurable if we should stall
+        cpuState.waitingForDisplay = true;
     }
 
 

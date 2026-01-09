@@ -28,6 +28,7 @@ public final class Emulator {
     private Sound sound;
     private CpuState cpuState;
     private Decoder decoder;
+    private long[] timer;
 
     ScheduledFuture<?> scheduledTick;
     ScheduledExecutorService executor;
@@ -64,29 +65,36 @@ public final class Emulator {
         loadFromConfig();
 
         // Used to measure the 60HZ timer updates
-        long[] timer = new long[]{
+        timer = new long[]{
                 System.nanoTime(),  // last cpu tick time
                 0,                  // timer accumulator
         };
 
         scheduledTick = executor.scheduleAtFixedRate(
-                () -> {
-                    int instruction = cpuState.fetchInstruction();
-                    decoder.decode(instruction);
-                    long now = System.nanoTime();
-                    timer[1] += (now - timer[0]);
-                    timer[0] = now;
-                    if (timer[1] > Config.get().timerPeriodNs) {
-                        cpuState.updateTimers();
-                        sound.audioLoop();
-                        EventQueue.invokeLater(() -> window.display.repaint());
-                        timer[1] -= Config.get().timerPeriodNs;
-                    }
-                },
+                this::chip8Loop,
                 0,
                 Config.get().cpuPeriodNs,
                 TimeUnit.NANOSECONDS
         );
+    }
+
+
+    private void chip8Loop() {
+        if (!cpuState.waitingForDisplay) {
+            int instruction = cpuState.fetchInstruction();
+            decoder.decode(instruction);
+        }
+        long now = System.nanoTime();
+        timer[1] += (now - timer[0]);
+        timer[0] = now;
+        if (timer[1] > Config.get().timerPeriodNs) {
+            cpuState.updateTimers();
+            cpuState.waitingForDisplay = false;
+            sound.audioLoop();
+            EventQueue.invokeLater(() -> window.display.repaint());
+            timer[1] -= Config.get().timerPeriodNs;
+        }
+
     }
 
 

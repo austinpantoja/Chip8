@@ -12,6 +12,7 @@ public class CpuState {
     public int I;
     public int delayTimer;
     public int soundTimer;
+    public boolean waitingForDisplay;
     private final IBus bus;
     private final byte[] V;
     private final int[] stack;
@@ -33,6 +34,7 @@ public class CpuState {
         sp = 0;
         delayTimer = 0;
         soundTimer = 0;
+        waitingForDisplay = false;
     }
 
 

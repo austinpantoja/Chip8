@@ -47,9 +47,13 @@ public class DisplayPanel extends JPanel {
         boolean erased = false;
 
         for (int yi = y; yi < y + sprite.length; yi++) {
+            // Quirk should be configurable
+            if (yi >= height) break;
             int py = (yi) % height;
 
             for (int i = 0; i < 8; i++) {
+                // Quirk - should be configurable
+                if ((x + i) >= width) break;
                 int px = (x + i) % width;
                 boolean flipPixel = ((sprite[yi - y] & (0b1000_0000 >> i)) != 0);
 
